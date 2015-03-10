@@ -60,6 +60,16 @@
         </section>
 
         <section>
+          <h2>Overview</h2>
+          <ul>
+            <li>More on Compound Indexes</li>
+            <li>Full-Text Indexes</li>
+            <li>Geospatial Indexes</li>
+            <li>MapReduce</li>
+          </ul>
+        </section>
+
+        <section>
           <h2>Indexes</h2>
           <ul>
             <li>Last Lecture: Motivated the Use of Indexes
@@ -488,6 +498,180 @@ for (i=0; i<10000000; i++) {
               </ul>
             </li>
             <li>... MongoDB will first limit the search to Prof. Anderson's tweets and then look for tweets containing the specified words.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Geospatial Indexes</h2>
+          <ul>
+            <li>MongoDB supports two types of geospatial indexes
+              <ul>
+                <li>We will be looking at just one called the 2dsphere index</li>
+              </ul>
+            </li>
+            <li>This index requires that the data in the attribute that is being indexed is in <a href="http://geojson.org">GeoJSON format</a>.
+              <ul>
+                <li>Mongo supports GeoJSON points, lines, and polygons</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>GeoJSON Examples</h2>
+          <ul>
+            <li>GeoJSON Point
+              <ul>
+                <li>{ "type": "Point", "coordinates": [100.0, 0.0] }</li>
+                <li>Coordinates are specified [longitude, latitude]</li>
+              </ul>
+            </li>
+            <li>GeoJSON LineString
+              <ul>
+                <li>{ "type": "LineString",
+    "coordinates": [ [100.0, 0.0], [101.0, 1.0] ]
+    }</li>
+              </ul>
+            </li>
+            <li>GeoJSON Polygon
+              <ul>
+                <li> { "type": "Polygon",
+    "coordinates": [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]]]}</li>
+                <li>Coordinates is an <q>array of arrays of points</q>. The first subarray specifies the exterior of the polygon. Any other arrays specify interior holes.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Creating a 2dsphere Index</h2>
+          <ul>
+            <li>Creating a 2dsphere index is simple (once you know that your values are properly formatted GeoJSON)</li>
+            <li>In our tweets collection, the "coordinates" attribute is formatted in this way</li>
+            <li>The entire collection has 625,800 tweets
+              <ul>
+                <li>Of these, 17,242 are geo-tagged</li>
+                <li>I used this query to discover that number: db.tweets.find({'coordinates': {$exists: true}}).count()</li>
+              </ul>
+            </li>
+            <li>To create the index:
+              <ul>
+                <li>db.tweets.ensureIndex({"coordinates": "2dsphere"})</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Creating a Query (1)</h2>
+          <ul>
+            <li>In most cases, you want to specify a bounding box for the queries that you will make against this index</li>
+            <li>The available query operators are:
+              <ul>
+                <li>$geoWithin: Find objects that are completely surrounded by a given bounding box</li>
+                <li>$geoIntersects: Find objects that intersect a given bounding box</li>
+                <li>$near and $nearSphere: Find objects that are near a given point. The two operators differ by how the calculation is performed. They return objects from nearest to farthest
+                  <ul>
+                    <li>$minDistance and $maxDistance (both specified in meters) can be used to constrain the search</li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Creating a Query (2)</h2>
+          <ul>
+            <li>How do we go about creating a bounding box?</li>
+            <li>Use &lt;<a href="http://geojson.io/">http://geojson.io/</a>&gt;!</li>
+          </ul>
+          <p><img src="images/boulder_bounding_box.png"></p>
+        </section>
+
+        <section>
+          <h2>Creating a Query (3)</h2>
+          <ul>
+            <li>Using that website, I created this bounding box for the City of Boulder</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+"geometry": {
+  "type": "Polygon",
+  "coordinates": [
+    [
+      [
+        -105.2548599243164,
+        39.957911932580835
+      ],
+      [
+        -105.29022216796875,
+        39.989221102071994
+      ],
+      [
+        -105.29193878173828,
+        40.063621419947914
+      ],
+      [
+        -105.23975372314453,
+        40.05337319344778
+      ],
+      [
+        -105.22361755371092,
+        39.98027708862263
+      ],
+      [
+        -105.2548599243164,
+        39.957911932580835
+      ]
+    ]
+  ]
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Creating a Query (4)</h2>
+          <ul>
+            <li>We can now create a query</li>
+            <li>Assume that the bounding box is stored in a variable called cityOfBoulder</li>
+            <li>To find the tweets that are within the City of Boulder, we can use this query:
+              <ul>
+                <li>db.tweets.find({"coordinates": { $geoWithin: { $geometry: cityOfBoulder} } })</li>
+                <li>It turns out that 30 of the 600K tweets are from our own city</li>
+              </ul>
+            </li>
+            <li>The <q>execution stats</q> show that the index is making the query effecient</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+"executionStats" : {
+  "executionSuccess" : true,
+  "nReturned" : 30,
+  "executionTimeMillis" : 0,
+  "totalKeysExamined" : 32,
+  "totalDocsExamined" : 30,
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Final Query</h2>
+          <ul>
+            <li>Let's see which of those tweets was created closest to our classroom</li>
+            <li>I used GeoJSON.io to create a point almost on top of our classroom:</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+"geometry": {
+  "type": "Point",
+  "coordinates": [
+    -105.26360392570496,
+    40.00682620659043
+  ]
+}
+          </code></pre>
+          <ul>
+            <li>Assume this value is stored in a variable called ClassRoom</li>
+            <li>I can now ask MongoDB which of the 30 tweets was produced closest to our classroom:
+            </li>
+            <li>db.tweets.find({"coordinates": {$nearSphere: { $geometry: ClassRoom }}})</li>
           </ul>
         </section>
 
