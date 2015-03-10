@@ -59,6 +59,45 @@
           </ul>
         </section>
 
+        <section>
+          <h2>Indexes</h2>
+          <ul>
+            <li>Last Lecture: Motivated the Use of Indexes
+              <ul>
+                <li>Can greatly reduce the number of documents that need to be examined to satisfy a query</li>
+                <li>Indeed, is required in order to sort large collections due to the 32MB limit on in-memory sorting</li>
+              </ul>
+            </li>
+            <li>Lot to Learn: We ended with an example where a compound index could not be used to sort its collection in reverse</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Terminology</h2>
+          <ul>
+            <li>Index Cardinality
+              <ul>
+                <li>Refers to the number of possible values for an indexed field</li>
+                <li>A field like <strong>employment status</strong> has <em>low cardinality</em> since it has two values: yes/no.</li>
+                <li>A field like <strong>name</strong> has <em>high cardinality</em> since each document might have a different value for that field</li>
+                <li>In general, you want indexes on high cardinality fields
+                  <ul>
+                    <li>They have the greatest potential for reducing a query down to a small number of documents</li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>A Bit More on Compound Indexes</h2>
+          <ul>
+            <li>Compound Indexes can be difficult to get right</li>
+            <li></li>
+          </ul>
+        </section>
+
       </div>
 
     </div>
