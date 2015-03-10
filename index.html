@@ -205,9 +205,9 @@ for (i=0; i<10000000; i++) {
 "executionStats" : {
   "executionSuccess" : true,
   "nReturned" : 1,
-  "executionTimeMillis" : 641,
+  "executionTimeMillis" : 3150,
   "totalKeysExamined" : 0,
-  "totalDocsExamined" : 1728235,
+  "totalDocsExamined" : 10000000,
   "executionStages" : {
     "stage" : "COLLSCAN",
     "filter" : {
@@ -238,6 +238,162 @@ for (i=0; i<10000000; i++) {
           </code></pre>
           <p>But this strategy won't work for all situations</p>
         </section>
+
+        <section>
+          <h2>Example (5)</h2>
+          <ul>
+            <li>As a result, we use an index</li>
+            <li>db.users.ensureIndex({"username" : 1})</li>
+            <li>db.users.find({username: "user101"}).explain("executionStats")</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+"executionStats" : {
+  "executionSuccess" : true,
+  "nReturned" : 1,
+  "executionTimeMillis" : 0,
+  "totalKeysExamined" : 1,
+  "totalDocsExamined" : 1,
+  "executionStages" : {
+    "stage" : "FETCH",
+    "nReturned" : 1,
+          </code></pre>
+          <ul>
+            <li>With the index created on username
+              <ul>
+                <li>queries just on that attribute are now instantaneous</li>
+              </ul>
+            </li>
+            <li>A search on any user is just as fast.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Back To Sorting (1)</h2>
+          <ul>
+            <li>If we try to sort this collection like this:
+              <ul>
+                <li>db.users.find().sort({"age" : 1, "username" : 1})</li>
+              </ul>
+            </li>
+            <li>We fail. The existing index cannot be used and we can't sort 10M documents in memory</li>
+            <li>So, we create the compound index:
+              <ul>
+                <li>db.users.ensureIndex({"age" : 1, "username" : 1})</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Back to Sorting (2)</h2>
+          <ul>
+            <li>We can now work with those two attributes efficiently</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+> db.users.find({}, {"age": 1, "username": 1, "_id": 0}).sort({"age" : 1, "username" : 1})
+{ "age" : 0, "username" : "user1000088" }
+{ "age" : 0, "username" : "user100009" }
+{ "age" : 0, "username" : "user1000146" }
+{ "age" : 0, "username" : "user1000159" }
+{ "age" : 0, "username" : "user100022" }
+{ "age" : 0, "username" : "user1000305" }
+{ "age" : 0, "username" : "user1000351" }
+{ "age" : 0, "username" : "user1000365" }
+{ "age" : 0, "username" : "user1000935" }
+{ "age" : 0, "username" : "user1001269" }
+{ "age" : 0, "username" : "user100139" }
+{ "age" : 0, "username" : "user1001551" }
+{ "age" : 0, "username" : "user1001582" }
+{ "age" : 0, "username" : "user1001665" }
+{ "age" : 0, "username" : "user1001801" }
+{ "age" : 0, "username" : "user1001895" }
+{ "age" : 0, "username" : "user1001946" }
+{ "age" : 0, "username" : "user1001964" }
+{ "age" : 0, "username" : "user1001972" }
+{ "age" : 0, "username" : "user100199" }
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Back to Sorting (3)</h2>
+          <ul>
+            <li>And backwards (but no other sort combinations!)</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+> db.users.find({}, {"age": 1, "username": 1, "_id": 0}).sort({"age" : -1, "username" : -1})
+{ "age" : 119, "username" : "user9999865" }
+{ "age" : 119, "username" : "user9999844" }
+{ "age" : 119, "username" : "user9999671" }
+{ "age" : 119, "username" : "user9999618" }
+{ "age" : 119, "username" : "user9999317" }
+{ "age" : 119, "username" : "user9999151" }
+{ "age" : 119, "username" : "user9999061" }
+{ "age" : 119, "username" : "user9998918" }
+{ "age" : 119, "username" : "user9998884" }
+{ "age" : 119, "username" : "user9998757" }
+{ "age" : 119, "username" : "user9998700" }
+{ "age" : 119, "username" : "user9998691" }
+{ "age" : 119, "username" : "user9998613" }
+{ "age" : 119, "username" : "user9998520" }
+{ "age" : 119, "username" : "user9998509" }
+{ "age" : 119, "username" : "user9998470" }
+{ "age" : 119, "username" : "user9998333" }
+{ "age" : 119, "username" : "user9998119" }
+{ "age" : 119, "username" : "user9998026" }
+{ "age" : 119, "username" : "user9997947" }
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Indexes Enable Queries (1)</h2>
+          <ul>
+            <li>Indexes enable three types of queries
+              <ul>
+                <li>Point Queries: search for a single value, then traverse index (either direction)
+                  <ul>
+                    <li>db.users.find({"age" : 21}, {"age": 1, "username": 1, "_id": 0}).sort({"username" : 1})</li>
+                    <li>db.users.find({"age" : 21}, {"age": 1, "username": 1, "_id": 0}).sort({"username" : -1})</li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Indexes Enable Queries (2)</h2>
+          <ul>
+            <li>Indexes enable three types of queries
+              <ul>
+                <li>Multi-Value Query: search for a range of values
+                  <ul>
+                    <li>db.users.find({"age" : {"$gte" : 21, "$lte" : 30}}, {"age": 1, "username": 1, "_id": 0})</li>
+                  </ul>
+                </li>
+                <li>This is efficient because <em>age</em> is a <q>prefix</q> of the index.</li>
+                <li>Mongo can use that index to narrow down the range of documents</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Indexes Enable Queries (3)</h2>
+          <ul>
+            <li>Indexes enable three types of queries
+              <ul>
+                <li>Multi-Value Query With Sort: search for a range of values and then sort
+                  <ul>
+                    <li>db.users.find({"age" : {"$gte" : 21, "$lte" : 30}}, {"age": 1, "username": 1, "_id": 0}).sort({"username": 1})</li>
+                  </ul>
+                </li>
+                <li>This query is less efficient because it can no longer return documents in index order. The index is ordered by age first, then by username.</li>
+                <li>As a result, Mongo falls back to the original index on username and goes through that index, picking out documents whose age parameter is in the desired range</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
 
       </div>
 
