@@ -91,11 +91,152 @@
         </section>
 
         <section>
-          <h2>A Bit More on Compound Indexes</h2>
+          <h2>More on Compound Indexes</h2>
           <ul>
-            <li>Compound Indexes can be difficult to get right</li>
-            <li></li>
+            <li>Compound Indexes can be difficult to get right
+              <ul>
+                <li>But they are absolutely crucial for performance reasons</li>
+              </ul>
+            </li>
+            <li>The key concern is understanding what queries your application makes all the time and then building indexes that match the structure of those queries</li>
           </ul>
+        </section>
+
+        <section>
+          <h2>Sort Order (1)</h2>
+          <ul>
+            <li>Last time, we had created a compound index that looked like this:
+              <ul>
+                <li>db.tweets.ensureIndex({'user.created_at': 1, 'created_at': -1});</li>
+              </ul>
+            </li>
+            <li>This indexes a set of tweets
+              <ul>
+                <li>first by the date each user joined Twitter (ascending)</li>
+                <li>and then each user's tweets are sorted from most recent to least recent (descending)</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Sort Order (2)</h2>
+          <ul>
+            <li>Given this index: {'user.created_at': 1, 'created_at': -1}</li>
+            <li>We can sort like this:
+              <ul>
+                <li>db.tweets.find().sort({'user.created_at': 1, 'created_at': -1})</li>
+              </ul>
+            </li>
+            <li>But we can't sort like this:
+              <ul>
+                <li>db.tweets.find().sort({'user.created_at': -1, 'created_at': -1})</li>
+              </ul>
+            </li>
+            <li>We get an out-of-memory error</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Sort Order (3)</h2>
+          <ul>
+            <li>It looks like we reversed the sort, but we didn't
+              <ul>
+                <li>To truly reverse it, we have to imagine multiplying each part of the compound index by -1</li>
+              </ul>
+            </li>
+            <li>So this is the reverse sort of the original:
+              <ul>
+                <li>db.tweets.find().sort({'user.created_at': -1, 'created_at': 1})</li>
+              </ul>
+            </li>
+            <li>This gives us the <q>oldest</q> tweets of the <q>youngest</q> Twitter user
+              <ul>
+                <li>Rather than the <q>youngest</q> tweets of the <q>oldest</q> Twitter user</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Example (1)</h2>
+          <ul>
+            <li>Let's look at an example</li>
+            <li>We will dynamically generate a MongoDB database/collection with the following program:</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+for (i=0; i<10000000; i++) {
+  db.users.insert(
+    {
+      "i"        : i,
+      "username" : "user"+i,
+      "age"      : Math.floor(Math.random()*120),
+      "created"  : new Date()
+    }
+  );
+}
+          </code></pre>
+          <ul>
+            <li>This creates a collection with 10M documents</li>
+            <li>Note: this code took a LONG time to run!</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Example (2)</h2>
+          <ul>
+            <li>A collection with ten million documents must be handled with care
+              <ul>
+                <li>Without indexes, all queries are slow</li>
+                <li>The collection cannot be sorted except by _id</li>
+                <li>Each new index may be expensive in terms of disk space</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Example (3)</h2>
+          <ul>
+            <li>Without an index, all documents are scanned</li>
+            <li>db.users.find({username: "user101"}).explain("executionStats")</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+"executionStats" : {
+  "executionSuccess" : true,
+  "nReturned" : 1,
+  "executionTimeMillis" : 641,
+  "totalKeysExamined" : 0,
+  "totalDocsExamined" : 1728235,
+  "executionStages" : {
+    "stage" : "COLLSCAN",
+    "filter" : {
+      "username" : {
+        "$eq" : "user101"
+      }
+    },
+    "nReturned" : 1,
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Example (4)</h2>
+          <ul>
+            <li>We can optimize this particular query by telling Mongo to stop looking as soon as it finds a match</li>
+            <li>db.users.find({username: "user101"}).limit(1).explain("executionStats")</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+"executionStats" : {
+  "executionSuccess" : true,
+  "nReturned" : 1,
+  "executionTimeMillis" : 0,
+  "totalKeysExamined" : 0,
+  "totalDocsExamined" : 102,
+  "executionStages" : {
+    "stage" : "LIMIT",
+    "nReturned" : 1,
+          </code></pre>
+          <p>But this strategy won't work for all situations</p>
         </section>
 
       </div>
