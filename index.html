@@ -675,6 +675,61 @@ for (i=0; i<10000000; i++) {
           </ul>
         </section>
 
+        <section>
+          <h2>Map Reduce</h2>
+          <ul>
+            <li>Mongo offers the ability to create new collections from old collections using a technique called Map Reduce</li>
+            <li>Map Reduce takes two functions: a map function and a reduce function</li>
+            <li>It can also take a query, if so, it first finds the results of the query and then applies MapReduce to the result set</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Map Functions</h2>
+          <ul>
+            <li>A map function in MongoDB is a javascript function</li>
+            <li>This function takes no parameters but it is called such that the <code>this</code> variable points at a document in the input collection</li>
+            <li>The function can perform calculations if it wants and then emit zero or more documents based on the information it finds</li>
+            <li>Here's a function that can be used to count up the number of times a screen name appears in a collection</li>
+            <pre><code data-trim contenteditable>
+function () {
+  emit(this.user.screen_name, {count: 1});
+}
+            </code></pre>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Reduce Functions</h2>
+          <ul>
+            <li>A reduce function takes a key and a set of produced documents that were previously emited</li>
+            <li>It must return a document that can be sent back into the reduce function in a subsequent phase</li>
+            <li>For our example, that means it must generate documents of the form {count: X} where x is a number</li>
+          </ul>
+          <pre><code data-trim contenteditable>
+function (key, docs) {
+  var total = 0;
+  for (var i = 0; i &lt; docs.length; i++) {
+    total += docs[i].count;
+  }
+  return {count : total};
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>The Result</h2>
+          <ul>
+            <li>Assuming the previous functions are in variables map and reduce, you can run this command like this:
+              <ul>
+                <li>db.tweets.mapReduce(map, reduce, {out: "users"});</li>
+              </ul>
+            </li>
+            <li>At the end of the operation, you will have a set of documents in a new collection</li>
+            <li>Each document will have one key (in this case a screen_name) and a value that is equal to the number of times it appeared in the collection</li>
+          </ul>
+        </section>
+
       </div>
 
     </div>
