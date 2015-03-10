@@ -394,6 +394,102 @@ for (i=0; i<10000000; i++) {
           </ul>
         </section>
 
+        <section>
+          <h2>Other Index Types</h2>
+          <ul>
+            <li>Full-Text Indexes</li>
+            <li>Geospatial Indexes</li>
+            <li>There are others, but they are out-of-scope</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Full-Text Indexes</h2>
+          <ul>
+            <li>MongoDB has support for <q>full text</q> search</li>
+            <li>To see why it's needed, let's switch back to our snow data set and try to search for a text phrase without an index</li>
+            <li>We can use a regular expression to find, for instance, all tweets that contain the phrase <q>proper shoes</q>.
+              <ul>
+                <li>db.tweets.find({"text": /proper shoes/i}, {"_id": 0, "text": 1})</li>
+              </ul>
+            </li>
+            <li>Same old story: MongoDB has to look at every document, taking 700 ms; in this case it finds six tweets with the phrase</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Using Full-Text Indexes</h2>
+          <ul>
+            <li>Create the full-text index:
+              <ul>
+                <li>db.tweets.ensureIndex( { "text": "text" } );</li>
+                <li>On my machine, this took several minutes!</li>
+              </ul>
+            </li>
+            <li>Use the $text operator to query the index
+              <ul>
+                <li>db.tweets.find({$text: { $search: "\"proper shoes\""}}, {"_id": 0, "text": 1})</li>
+              </ul>
+            </li>
+            <li>In this case, it finds the six documents in 15 ms having reviewed just 2124 of the 625800 tweets (0.3%)!</li>
+            <li>Note: we cannot use regular expressions with the $search operator</li>
+            <li>We had to search for the phrase "proper shoes"
+              <ul>
+                <li>Otherwise it would have searched for "proper" or "shoes" and returned 2118 documents!</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Not a Panacea</h2>
+          <ul>
+            <li>In this particular data set, we created it by looking for all tweets that contained the word 'snow'</li>
+            <li>So, if we search the text index for the word 'snow', it is going to return all of the documents!</li>
+            <li>Likewise, if we include snow in any search with other terms, we might reduce the number of documents we look at via the other terms but most likely we will still end up looking at most of the index/documents</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>The $text operator</h2>
+          <ul>
+            <li>The $text operator in a find command specifies that you want to use the full-text index</li>
+            <li>There can only be one full-text index per collection</li>
+            <li>If you want to have more than one document attribute included in the index, you specify that up front
+              <ul>
+                <li>db.tweets.ensureIndex({"text": "text", "user.description": "text"})</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Query Syntax</h2>
+          <ul>
+            <li>The $search operator expects a string that contains the full-text search you would like to perform</li>
+            <li>A string with individual words is considered an OR query</li>
+            <li>Words surrounded by quotes is an exact phrase search</li>
+            <li>Words that have a hyphen in front of them are considered negations
+              <ul>
+                <li>{$search: "snow -day"}: find all tweets that had the word <q>snow</q> in it but did not have the word <q>day</q> in it.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Compound Text Indexes</h2>
+          <ul>
+            <li>You can create a compound index that can help limit the amount of search you do on the text index</li>
+            <li>db.tweets.ensureIndex({ "user.screen_name": 1, "text": "text"})</li>
+            <li>Now, when you do a search like this...
+              <ul>
+                <li>db.tweets.find({"user.screen_name": "kenbod", $text: { $search: "apple ipad iphone watch"}})</li>
+              </ul>
+            </li>
+            <li>... MongoDB will first limit the search to Prof. Anderson's tweets and then look for tweets containing the specified words.</li>
+          </ul>
+        </section>
 
       </div>
 
